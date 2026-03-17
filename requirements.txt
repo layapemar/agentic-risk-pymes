@@ -1,0 +1,12 @@
+numpy
+pandas
+scikit-learn
+fastapi
+uvicorn
+streamlit
+requests
+crewai
+crewai-tools
+python-dotenv
+pydantic
+weasyprint

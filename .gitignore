@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Virtual environments / conda
+.conda/
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Streamlit / local config
+.streamlit/secrets.toml
+
+# VS Code
+.vscode/
+
+# Build and artifacts
+build/
+dist/
+*.egg-info/
+artefactos/*.pdf
+artefactos/*.html
+
+# OS
+.DS_Store
+Thumbs.db

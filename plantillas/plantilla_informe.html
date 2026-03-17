@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe de Riesgo - {{company_name}}</title>
+    <style>
+        /* === VARIABLES GLOBALES & RESET === */
+        :root {
+            --c-primary: #003366;
+            /* Azul Corporativo */
+            --c-secondary: #f4f7f9;
+            /* Gris Fondo Claro */
+            --c-text: #333333;
+            /* Texto Principal */
+            --c-danger: #d32f2f;
+            /* Rojo (Riesgo Alto/Malo) */
+            --c-warning: #fbc02d;
+            /* Amarillo (Medio/Atención) */
+            --c-success: #388e3c;
+            /* Verde (Bueno) */
+            --c-neutral: #757575;
+            /* Gris neutro */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--c-text);
+            background-color: white;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            /* Importante para Chrome/Puppeteer */
+            print-color-adjust: exact;
+        }
+
+        /* === HOJA A4 === */
+        .page {
+            width: 210mm;
+            margin: 0 auto;
+            background: white;
+            padding: 10mm 15mm;
+            position: relative;
+        }
+
+        /* === HEADER === */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 3px solid var(--c-primary);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--c-primary);
+            letter-spacing: -1px;
+        }
+
+        .report-meta {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .report-meta h1 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            text-transform: uppercase;
+            color: var(--c-text);
+        }
+
+        /* === UTILIDADES DE GRID === */
+        .row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .col-2-3 {
+            flex: 2;
+        }
+
+        .col-1-3 {
+            flex: 1;
+        }
+
+        .col-1-2 {
+            flex: 1;
+        }
+
+        /* === COMPONENTES === */
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--c-primary);
+            border-left: 5px solid var(--c-primary);
+            padding-left: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card {
+            background-color: var(--c-secondary);
+            border-radius: 6px;
+            padding: 20px;
+        }
+
+        /* Estilos dinámicos para riesgo (inyectados por IA) */
+        .bg-danger-light {
+            background-color: #ffebee;
+        }
+
+        .bg-warning-light {
+            background-color: #fffde7;
+        }
+
+        .bg-success-light {
+            background-color: #e8f5e9;
+        }
+
+        .text-danger {
+            color: var(--c-danger) !important;
+        }
+
+        .text-warning {
+            color: #f57f17 !important;
+        }
+
+        /* Un poco más oscuro para texto */
+        .text-success {
+            color: var(--c-success) !important;
+        }
+
+        /* === TEXTO RESUMEN === */
+        .summary-content {
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: justify;
+        }
+
+        /* === MEDIDOR DE RIESGO === */
+        .risk-box {
+            text-align: center;
+        }
+
+        .score-large {
+            font-size: 56px;
+            font-weight: 900;
+            line-height: 1;
+            margin: 10px 0;
+        }
+
+        /* Barra de gradiente */
+        .risk-bar-container {
+            height: 12px;
+            background: linear-gradient(90deg, #4caf50 0%, #ffeb3b 50%, #f44336 100%);
+            border-radius: 10px;
+            position: relative;
+            margin: 15px 0;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .risk-marker {
+            position: absolute;
+            top: -6px;
+            width: 4px;
+            height: 24px;
+            background: #000;
+            border: 1px solid white;
+            transform: translateX(-50%);
+            /* Centrar el marcador */
+        }
+
+        .risk-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .pd-stat {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .pd-stat strong {
+            display: block;
+            font-size: 24px;
+        }
+
+        .pd-stat span {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #777;
+        }
+
+        /* === TABLA FINANCIERA === */
+        .fin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: white;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .fin-table th {
+            background: #eef2f5;
+            text-align: left;
+            padding: 10px 15px;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 2px solid #dde;
+        }
+
+        .fin-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .fin-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .kpi-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .badge-green {
+            background-color: var(--c-success);
+        }
+
+        .badge-amber {
+            background-color: var(--c-warning);
+            color: #333;
+        }
+
+        .badge-red {
+            background-color: var(--c-danger);
+        }
+
+        /* === LISTAS CUALITATIVAS === */
+        ul.analysis-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        ul.analysis-list li {
+            margin-bottom: 8px;
+            font-size: 13px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        ul.analysis-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 4px;
+            width: 12px;
+            height: 12px;
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+
+        /* Clases auxiliares para iconos, la IA decide cual poner */
+        .li-good::before {
+            content: '✓';
+            color: var(--c-success);
+            font-weight: bold;
+            font-size: 14px;
+            background: none;
+        }
+
+        .li-bad::before {
+            content: '✗';
+            color: var(--c-danger);
+            font-weight: bold;
+            font-size: 14px;
+            background: none;
+        }
+
+        .li-warn::before {
+            content: '!';
+            color: var(--c-warning);
+            font-weight: bold;
+            font-size: 14px;
+            background: none;
+        }
+
+        /* === FOOTER NOTA === */
+        .analyst-footer {
+            margin-top: 40px;
+            border-top: 1px dashed #ccc;
+            padding-top: 20px;
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .analyst-box {
+            background: #fff8e1;
+            /* Amarillo pálido */
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            flex: 1;
+        }
+
+        /* === MEDIA PRINT === */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+
+            .page {
+                width: 100%;
+                height: auto;
+                margin: 0;
+                padding: 10mm;
+                box-shadow: none;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+
+        /* === WEASYPRINT - Evitar saltos de página === */
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+
+        header {
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        .row {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .section-title {
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        .card {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .fin-table {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .analyst-footer {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page">
+
+        <header>
+            <div>
+                <div class="logo">RiskAI</div>
+                <div style="font-size: 11px; color: #888;">Automated Financial Intelligence</div>
+            </div>
+            <div class="report-meta">
+                <h1>Informe de Riesgo Crédito</h1>
+                <div><strong>Empresa:</strong> {{company_name}}</div>
+                <div><strong>ID Fiscal/Int:</strong> {{company_id}}</div>
+                <div><strong>Fecha Emisión:</strong> {{report_date}}</div>
+            </div>
+        </header>
+
+        <div class="row">
+
+            <div class="col-2-3">
+                <div class="section-title">Resumen Ejecutivo (IA)</div>
+                <div class="summary-content">
+                    {{executive_summary_html}}
+                </div>
+            </div>
+
+            <div class="col-1-3 card {{risk_bg_class}} risk-box">
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Score de Riesgo</div>
+
+                <div class="score-large {{risk_text_class}}">{{risk_score}}</div>
+
+                <div class="risk-bar-container">
+                    <div class="risk-marker" style="left: {{risk_meter_percentage}}%;"></div>
+                </div>
+                <div class="risk-labels"><span>Bajo</span><span>Alto</span></div>
+
+                <div class="pd-stat">
+                    <span class="{{risk_text_class}}">{{pd_value}}%</span>
+                    <div style="font-size:9px; color:#999; margin-top:2px;">Probabilidad Default (12m)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">Radiografía Financiera (Último ejercicio cerrado)</div>
+        <div class="row">
+            <div class="col-1-2">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Indicador Clave</th>
+                            <th>Valor</th>
+                            <th>Diagnóstico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Liquidez (Current Ratio)</td>
+                            <td class="kpi-value">{{ratio_liquidity_value}}</td>
+                            <td><span
+                                    class="status-badge {{ratio_liquidity_badge_class}}">{{ratio_liquidity_text}}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Apalancamiento</td>
+                            <td class="kpi-value">{{ratio_leverage_value}}</td>
+                            <td><span class="status-badge {{ratio_leverage_badge_class}}">{{ratio_leverage_text}}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Margen EBITDA</td>
+                            <td class="kpi-value">{{ratio_ebitda_value}}</td>
+                            <td><span class="status-badge {{ratio_ebitda_badge_class}}">{{ratio_ebitda_text}}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Cobertura Intereses</td>
+                            <td class="kpi-value">{{ratio_coverage_value}}</td>
+                            <td><span class="status-badge {{ratio_coverage_badge_class}}">{{ratio_coverage_text}}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="col-1-2 card"
+                style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 10px;">Crecimiento de Ingresos (YoY)</div>
+                <div style="font-size: 32px; font-weight: bold; color: {{growth_color}};">{{growth_value}}%</div>
+                <div style="font-size: 12px; text-align: center; margin-top: 5px;">
+                    Tendencia Operativa: <strong>{{operational_trend_text}}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-1-2">
+                <div class="section-title">Fortalezas</div>
+                <ul class="analysis-list">
+                    {{strengths_list_html}}
+                </ul>
+            </div>
+            <div class="col-1-2">
+                <div class="section-title">Debilidades y Alertas</div>
+                <ul class="analysis-list">
+                    {{weaknesses_list_html}}
+                </ul>
+            </div>
+        </div>
+
+        <div class="analyst-footer">
+            <div class="analyst-box">
+                <strong>Nota para el Analista:</strong><br>
+                {{analyst_note}}
+            </div>
+            <div style="flex: 0 0 150px; text-align: right; font-size: 10px; color: #999;">
+                Generado por Modelo RiskAI v2.4<br>
+                ID Transacción: {{transaction_id}}<br>
+                Página 1 de 1
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>
