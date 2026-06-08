@@ -5,12 +5,12 @@ from dotenv import load_dotenv
 
 from crewai import Agent, Task, Crew, Process
 from crewai.tools import tool
+from ratios import calcular_ratios
 
-# Cargar variables de entorno desde .env
 load_dotenv()
 
-# URL de la API FastAPI (asegúrate de lanzar api_pd.py con uvicorn)
-API_URL = "http://localhost:8000/calcular_pd"
+_base = os.getenv("API_URL", "http://localhost:8000")
+API_URL = f"{_base}/calcular_pd"
 
 ruta_base = os.path.dirname(__file__)
 ruta_datos = os.path.join(ruta_base, "datos")
@@ -46,77 +46,29 @@ def herramienta_analisis_financiero(id_empresa: str) -> str:
     ident = int(id_empresa)
     df = estados_financieros_validacion[
         estados_financieros_validacion["id_empresa"] == ident
-    ].sort_values("ano")
+    ]
     if df.empty:
         return f"No se encontraron estados financieros para id_empresa={ident}."
 
-    ultima = df.iloc[-1]
-
-    activos_corrientes = (
-        ultima["caja"] + ultima["cuentas_cobrar"] + ultima["inventario"]
-    )
-    pasivos_corrientes = ultima["cuentas_pagar"] + 1e-6
-    ratio_liquidez = activos_corrientes / pasivos_corrientes
-    ratio_apalancamiento = ultima["pasivos_totales"] / (ultima["patrimonio"] + 1e-6)
-    margen_ebitda = ultima["ebitda"] / (ultima["ingresos"] + 1e-6)
-    cobertura_intereses = ultima["ebitda"] / (ultima["gastos_intereses"] + 1e-6)
-
-    if len(df) >= 2:
-        crecimiento_ingresos_ultimo = (
-            df.iloc[-1]["ingresos"] / (df.iloc[-2]["ingresos"] + 1e-6) - 1
-        )
-    else:
-        crecimiento_ingresos_ultimo = None
-
-    fortalezas = []
-    debilidades = []
-
-    if ratio_liquidez >= 1.2:
-        fortalezas.append("Buena liquidez de corto plazo.")
-    else:
-        debilidades.append("Liquidez ajustada.")
-
-    if ratio_apalancamiento <= 3:
-        fortalezas.append("Apalancamiento razonable.")
-    else:
-        debilidades.append("Apalancamiento elevado.")
-
-    if margen_ebitda > 0.10:
-        fortalezas.append("Margen operativo saludable.")
-    else:
-        debilidades.append("Margen operativo reducido.")
-
-    if cobertura_intereses > 3:
-        fortalezas.append("Buena cobertura de intereses.")
-    else:
-        debilidades.append("Cobertura de intereses limitada.")
-
-    if crecimiento_ingresos_ultimo is not None:
-        if crecimiento_ingresos_ultimo > 0:
-            fortalezas.append("Ingresos en crecimiento.")
-        else:
-            debilidades.append("Ingresos en contracción.")
+    resultado = calcular_ratios(df)
+    r = resultado["ratios"]
 
     lineas = [
         f"Análisis financiero para id_empresa={ident}:",
-        f"- Current ratio (liquidez) = {ratio_liquidez:.2f}",
-        f"- Apalancamiento (pasivos/patrimonio) = {ratio_apalancamiento:.2f}",
-        f"- Margen EBITDA = {margen_ebitda:.2%}",
-        f"- Cobertura EBITDA/intereses = {cobertura_intereses:.2f}x",
+        f"- Current ratio (liquidez) = {r['ratio_liquidez']:.2f}",
+        f"- Apalancamiento (pasivos/patrimonio) = {r['ratio_apalancamiento']:.2f}",
+        f"- Margen EBITDA = {r['margen_ebitda']:.2%}",
+        f"- Cobertura EBITDA/intereses = {r['cobertura_intereses']:.2f}x",
     ]
-    if crecimiento_ingresos_ultimo is not None:
-        lineas.append(
-            f"- Crecimiento de ingresos último año = {crecimiento_ingresos_ultimo:.2%}"
-        )
+    if r["crecimiento_ingresos_ultimo"] is not None:
+        lineas.append(f"- Crecimiento de ingresos último año = {r['crecimiento_ingresos_ultimo']:.2%}")
 
-    if fortalezas:
-        lineas.append("Fortalezas financieras:")
-        for f in fortalezas:
-            lineas.append(f"  * {f}")
-    if debilidades:
-        lineas.append("Debilidades y puntos de atención:")
-        for d in debilidades:
-            lineas.append(f"  * {d}")
+    if resultado["fortalezas"]:
+        lineas.append("Fortalezas:")
+        lineas.extend(f"  * {f}" for f in resultado["fortalezas"])
+    if resultado["debilidades"]:
+        lineas.append("Puntos de atención:")
+        lineas.extend(f"  * {d}" for d in resultado["debilidades"])
 
     return "\n".join(lineas)
 

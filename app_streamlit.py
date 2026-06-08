@@ -11,11 +11,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from agentes import ejecutar_equipo_riesgo
+from ratios import calcular_ratios
 
 ruta_base = os.path.dirname(__file__)
 ruta_datos = os.path.join(ruta_base, "datos")
 
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 df_pd_validacion = pd.read_csv(os.path.join(ruta_datos, "pd_validacion.csv"))
 df_estados_validacion = pd.read_csv(
@@ -25,94 +26,13 @@ df_estados_validacion = pd.read_csv(
 ids_empresas_validacion = sorted(df_pd_validacion["id_empresa"].unique())
 
 
-def analizar_estados_financieros(id_empresa: int):
+def analizar_estados_financieros(id_empresa: int) -> dict:
     df = df_estados_validacion[
         df_estados_validacion["id_empresa"] == id_empresa
-    ].sort_values("ano")
+    ]
     if df.empty:
-        raise ValueError("id_empresa no encontrado en el conjunto de validación.")
-
-
-def analizar_estados_financieros(id_empresa: int):
-    df = df_estados_validacion[
-        df_estados_validacion["id_empresa"] == id_empresa
-    ].sort_values("ano")
-    if df.empty:
-        raise ValueError(
-            f"id_empresa {id_empresa} no encontrado en estados financieros de validación."
-        )
-
-    ultima = df.iloc[-1]
-
-    activos_corrientes = (
-        ultima["caja"] + ultima["cuentas_cobrar"] + ultima["inventario"]
-    )
-    pasivos_corrientes = ultima["cuentas_pagar"] + 1e-6
-    ratio_liquidez = activos_corrientes / pasivos_corrientes
-    ratio_apalancamiento = ultima["pasivos_totales"] / (ultima["patrimonio"] + 1e-6)
-    margen_ebitda = ultima["ebitda"] / (ultima["ingresos"] + 1e-6)
-    cobertura_intereses = ultima["ebitda"] / (ultima["gastos_intereses"] + 1e-6)
-
-    if len(df) >= 2:
-        crecimiento_ingresos_ultimo = (
-            df.iloc[-1]["ingresos"] / (df.iloc[-2]["ingresos"] + 1e-6) - 1
-        )
-        margen_ebitda_prev = df.iloc[-2]["ebitda"] / (df.iloc[-2]["ingresos"] + 1e-6)
-        tendencia_margen = (
-            "mejorando" if margen_ebitda > margen_ebitda_prev else "empeorando"
-        )
-    else:
-        crecimiento_ingresos_ultimo = None
-        tendencia_margen = "sin histórico suficiente"
-
-    fortalezas = []
-    debilidades = []
-
-    if ratio_liquidez >= 1.2:
-        fortalezas.append("Buena liquidez de corto plazo.")
-    else:
-        debilidades.append("Liquidez ajustada: current ratio bajo.")
-
-    if ratio_apalancamiento <= 3:
-        fortalezas.append("Apalancamiento razonable.")
-    else:
-        debilidades.append("Apalancamiento elevado.")
-
-    if margen_ebitda > 0.10:
-        fortalezas.append("Margen operativo saludable.")
-    else:
-        debilidades.append("Margen operativo reducido.")
-
-    if cobertura_intereses > 3:
-        fortalezas.append("Buena cobertura de intereses.")
-    else:
-        debilidades.append("Cobertura de intereses limitada.")
-
-    if crecimiento_ingresos_ultimo is not None:
-        if crecimiento_ingresos_ultimo > 0:
-            fortalezas.append("Ingresos en crecimiento.")
-        else:
-            debilidades.append("Ingresos en contracción.")
-
-    analisis = {
-        "ratios": {
-            "ratio_liquidez": float(ratio_liquidez),
-            "ratio_apalancamiento": float(ratio_apalancamiento),
-            "margen_ebitda": float(margen_ebitda),
-            "cobertura_intereses": float(cobertura_intereses),
-            "crecimiento_ingresos_ultimo": (
-                float(crecimiento_ingresos_ultimo)
-                if crecimiento_ingresos_ultimo is not None
-                else None
-            ),
-        },
-        "fortalezas": fortalezas,
-        "debilidades": debilidades,
-        "tendencia_margen": tendencia_margen,
-        "anos_disponibles": list(df["ano"].astype(int)),
-    }
-
-    return analisis
+        raise ValueError(f"id_empresa {id_empresa} no encontrado en estados financieros.")
+    return calcular_ratios(df)
 
 
 def generar_informe_pdf(

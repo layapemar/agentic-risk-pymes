@@ -1,6 +1,6 @@
 
 import os
-import pickle
+import joblib
 from typing import Optional
 
 import pandas as pd
@@ -11,8 +11,7 @@ ruta_base = os.path.dirname(__file__)
 ruta_datos = os.path.join(ruta_base, "datos")
 ruta_artefactos = os.path.join(ruta_base, "artefactos")
 
-with open(os.path.join(ruta_artefactos, "modelo_pd.pkl"), "rb") as f:
-    artefacto = pickle.load(f)
+artefacto = joblib.load(os.path.join(ruta_artefactos, "modelo_pd.pkl"))
 
 modelo = artefacto["modelo"]
 escalador = artefacto["escalador"]
