@@ -18,7 +18,6 @@ estados_financieros_validacion = pd.read_csv(
     os.path.join(ruta_datos, "estados_financieros_validacion.csv")
 )
 
-
 @tool("Modelo de PD para empresa")
 def herramienta_modelo_pd(id_empresa: str) -> str:
     """
@@ -35,7 +34,6 @@ def herramienta_modelo_pd(id_empresa: str) -> str:
         f"banda de score={datos['banda_score']}."
     )
     return texto
-
 
 @tool("Análisis financiero de empresa")
 def herramienta_analisis_financiero(id_empresa: str) -> str:
@@ -71,7 +69,6 @@ def herramienta_analisis_financiero(id_empresa: str) -> str:
         lineas.extend(f"  * {d}" for d in resultado["debilidades"])
 
     return "\n".join(lineas)
-
 
 def construir_equipo():
     agente_modelo_pd = Agent(
@@ -152,7 +149,6 @@ def construir_equipo():
         verbose=True,
     )
     return equipo
-
 
 def ejecutar_equipo_riesgo(id_empresa: int) -> str:
     """

@@ -25,7 +25,6 @@ df_estados_validacion = pd.read_csv(
 
 ids_empresas_validacion = sorted(df_pd_validacion["id_empresa"].unique())
 
-
 def analizar_estados_financieros(id_empresa: int) -> dict:
     df = df_estados_validacion[
         df_estados_validacion["id_empresa"] == id_empresa
@@ -33,7 +32,6 @@ def analizar_estados_financieros(id_empresa: int) -> dict:
     if df.empty:
         raise ValueError(f"id_empresa {id_empresa} no encontrado en estados financieros.")
     return calcular_ratios(df)
-
 
 def generar_informe_pdf(
     id_empresa: int,
@@ -64,7 +62,6 @@ def generar_informe_pdf(
     pdf_bytes = HTML(string=html_final).write_pdf()
     return pdf_bytes
 
-
 def generar_informe_html(
     id_empresa: int,
     resultado_pd: dict,
@@ -87,7 +84,6 @@ def generar_informe_html(
 
     return html_final
 
-
 def preparar_datos_para_plantilla(
     id_empresa: int,
     resultado_pd: dict,
@@ -100,7 +96,6 @@ def preparar_datos_para_plantilla(
     pd_12m = resultado_pd["pd_12m"]
     banda_score = resultado_pd["banda_score"]
 
-    # Determinar clases CSS según el riesgo (basado en banda de score y PD)
     if banda_score in ["CCC", "C"] or pd_12m > 0.07:
         risk_bg_class = "bg-danger-light"
         risk_text_class = "text-danger"
@@ -111,12 +106,9 @@ def preparar_datos_para_plantilla(
         risk_bg_class = "bg-success-light"
         risk_text_class = "text-success"
 
-    # Calcular posición en el medidor de riesgo (0-100%)
     # PD de 0% = posición 0, PD de 20%+ = posición 100
     risk_meter_percentage = min(pd_12m * 500, 100)  # Escalar para que 20% PD = 100%
 
-    # Evaluar ratios individuales
-    # Liquidez
     ratio_liquidez = r["ratio_liquidez"]
     if ratio_liquidez >= 2.0:
         liquidity_badge = "badge-green"
@@ -131,7 +123,6 @@ def preparar_datos_para_plantilla(
         liquidity_badge = "badge-red"
         liquidity_text = "Crítico"
 
-    # Apalancamiento
     ratio_apal = r["ratio_apalancamiento"]
     if ratio_apal <= 1.5:
         leverage_badge = "badge-green"
@@ -143,7 +134,6 @@ def preparar_datos_para_plantilla(
         leverage_badge = "badge-red"
         leverage_text = "Excesivo"
 
-    # Margen EBITDA
     margen_ebitda = r["margen_ebitda"]
     if margen_ebitda >= 0.15:
         ebitda_badge = "badge-green"
@@ -155,7 +145,6 @@ def preparar_datos_para_plantilla(
         ebitda_badge = "badge-red"
         ebitda_text = "Débil"
 
-    # Cobertura de intereses
     cobertura = r["cobertura_intereses"]
     if cobertura >= 3.0:
         coverage_badge = "badge-green"
@@ -167,19 +156,14 @@ def preparar_datos_para_plantilla(
         coverage_badge = "badge-red"
         coverage_text = "Débil"
 
-    # Crecimiento
     crecimiento = r.get("crecimiento_ingresos_ultimo", 0)
     if crecimiento is None:
         crecimiento = 0
 
     if crecimiento > 0.05:
-        growth_color = "#388e3c"  # Verde
-    elif crecimiento > -0.05:
-        growth_color = "#f57f17"  # Amarillo oscuro
-    else:
-        growth_color = "#d32f2f"  # Rojo
-
-    # Tendencia operativa
+        growth_color = "#388e3c"    elif crecimiento > -0.05:
+        growth_color = "#f57f17"    else:
+        growth_color = "#d32f2f"
     tendencia = analisis_financiero.get("tendencia_margen", "Estable")
     if "mejor" in tendencia.lower() or "crec" in tendencia.lower():
         operational_trend = "Mejorando"
@@ -188,7 +172,6 @@ def preparar_datos_para_plantilla(
     else:
         operational_trend = "Estable"
 
-    # Generar listas HTML de fortalezas y debilidades
     strengths_html = ""
     if analisis_financiero.get("fortalezas"):
         for fortaleza in analisis_financiero["fortalezas"]:
@@ -201,7 +184,6 @@ def preparar_datos_para_plantilla(
     weaknesses_html = ""
     if analisis_financiero.get("debilidades"):
         for debilidad in analisis_financiero["debilidades"]:
-            # Determinar si es crítico o solo atención
             if any(
                 word in debilidad.lower()
                 for word in ["alto", "crítico", "grave", "excesivo", "débil"]
@@ -214,20 +196,17 @@ def preparar_datos_para_plantilla(
             "<li class='li-good'>No se detectaron debilidades relevantes.</li>"
         )
 
-    # Resumen ejecutivo (convertir markdown básico a HTML si existe)
     if resumen_ejecutivo:
         executive_summary_html = markdown_basico_a_html(resumen_ejecutivo)
     else:
         executive_summary_html = "<p>La empresa presenta características financieras que requieren análisis detallado por parte del equipo de riesgos.</p>"
 
-    # Nota para el analista
     analyst_note = (
         "Este informe combina la PD estimada por el modelo cuantitativo con un análisis de ratios financieros. "
         "El analista debe revisar la coherencia con información cualitativa (sector, equipo gestor, garantías) "
         "y decidir sobre la aprobación, límites o información adicional necesaria."
     )
 
-    # Construir diccionario de datos
     datos = {
         "company_name": f"Empresa ID {id_empresa}",
         "company_id": str(id_empresa),
@@ -261,54 +240,39 @@ def preparar_datos_para_plantilla(
 
     return datos
 
-
 def markdown_basico_a_html(texto: str) -> str:
     """Convierte markdown básico a HTML"""
-    # Reemplazar negritas
     html = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", texto)
-    # Reemplazar títulos ###
     html = re.sub(r"###\s*(.+?)\n", r"<h3>\1</h3>", html)
-    # Reemplazar párrafos
     html = html.replace("\n\n", "</p><p>")
-    # Envolver en párrafo inicial
     if not html.startswith("<"):
         html = f"<p>{html}</p>"
     return html
-
 
 def mostrar_pdf_en_streamlit(pdf_bytes: bytes):
     b64 = base64.b64encode(pdf_bytes).decode("utf-8")
     iframe = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600" type="application/pdf"></iframe>'
     st.markdown(iframe, unsafe_allow_html=True)
 
-
 def markdown_a_html(texto_markdown: str) -> str:
     """Convierte markdown básico a HTML para mostrar en cajas con scroll"""
-    # Reemplazar saltos de línea
     html = texto_markdown.replace("\n\n", "<br><br>").replace("\n", "<br>")
-    # Reemplazar negritas
     import re
 
     html = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", html)
-    # Reemplazar títulos ###
     html = re.sub(r"###\s*(.+?)<br>", r"<h3>\1</h3>", html)
-    # Reemplazar líneas horizontales
     html = html.replace("---<br>", "<hr>")
     html = html.replace("---", "<hr>")
     return html
 
-
-# Estilos inline para las cajas (garantiza que se apliquen)
 ESTILO_CAJA = "border: 3px solid #FF6B35; border-radius: 10px; padding: 20px; background-color: #FFFBF5; margin-bottom: 20px; height: 400px; max-height: 400px; overflow-y: auto; overflow-x: hidden;"
 ESTILO_CAJA_PDF = "border: 3px solid #FF6B35; border-radius: 10px; padding: 20px; background-color: #FFFBF5; height: 850px; max-height: 850px; overflow-y: auto; overflow-x: hidden;"
 ESTILO_TITULO = "color: #FF6B35; font-size: 18px; font-weight: bold; margin-top: 0; margin-bottom: 15px;"
-
 
 st.set_page_config(page_title="Demo Riesgo PYMEs con agentes IA", layout="wide")
 
 st.title("Demo de evaluación de riesgo para PYMEs con agentes de IA")
 
-# CSS personalizado para las cajas con bordes naranjas y scroll vertical
 st.markdown(
     """
 <style>
@@ -378,14 +342,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Sección de selección
 st.subheader("Selección de empresa")
 id_seleccionada = st.selectbox(
     "Empresa (id_empresa en validación):", ids_empresas_validacion
 )
 
 if st.button("Lanzar evaluación de riesgo", type="primary"):
-    # Fila superior: Orquestador y PDF
     col_top1, col_top2 = st.columns([1, 1])
 
     with col_top1:
@@ -394,7 +356,6 @@ if st.button("Lanzar evaluación de riesgo", type="primary"):
     with col_top2:
         contenedor_pdf = st.empty()
 
-    # Fila inferior: Data Scientist y Analista
     col_bottom1, col_bottom2 = st.columns([1, 1])
 
     with col_bottom1:
@@ -403,10 +364,8 @@ if st.button("Lanzar evaluación de riesgo", type="primary"):
     with col_bottom2:
         contenedor_analista = st.empty()
 
-    # Inicializar variables para ir acumulando el texto
     import time
 
-    # PASO 1: Agente Data Scientist trabaja con el modelo
     contenedor_data_scientist.markdown(
         f"""
 <div style="{ESTILO_CAJA}">
@@ -438,7 +397,6 @@ if st.button("Lanzar evaluación de riesgo", type="primary"):
         resp.raise_for_status()
         resultado_pd = resp.json()
 
-        # El agente data scientist va explicando sus hallazgos
         texto_data_scientist = f"""
 **🤖 Agente Data Scientist (Modelo PD)**
 
@@ -455,7 +413,6 @@ if st.button("Lanzar evaluación de riesgo", type="primary"):
 📊 **Mi interpretación como Data Scientist:**
 
 """
-        # Interpretación según la PD
         if resultado_pd["pd_12m"] < 0.02:
             texto_data_scientist += """
 ✅ Esta empresa muestra una **muy baja probabilidad de default**. El modelo la clasifica en la zona más segura.
@@ -511,7 +468,6 @@ if st.button("Lanzar evaluación de riesgo", type="primary"):
 🔄 **Mi recomendación:** Proceder con el análisis de ratios financieros para validar y profundizar estos hallazgos.
 """
 
-        # Convertir a HTML y mostrar en la caja
         html_content = markdown_a_html(texto_data_scientist)
         contenedor_data_scientist.markdown(
             f"""
@@ -530,7 +486,6 @@ if st.button("Lanzar evaluación de riesgo", type="primary"):
 
     time.sleep(0.3)
 
-    # PASO 2: Agente Analista Financiero trabaja con los ratios
     contenedor_orquestador.markdown(
         f"""
 <div style="{ESTILO_CAJA}">
@@ -560,7 +515,6 @@ Calculando ratios clave...</p>
         analisis_financiero = analizar_estados_financieros(int(id_seleccionada))
         r = analisis_financiero["ratios"]
 
-        # El analista va explicando sus hallazgos
         texto_analista = f"""
 **📊 Agente Analista Financiero**
 
@@ -675,7 +629,6 @@ Calculando ratios clave...</p>
         else:
             texto_analista += "La empresa presenta **varios puntos de atención** que sugieren vulnerabilidad financiera. Recomiendo cautela."
 
-        # Convertir a HTML y mostrar en la caja
         html_content = markdown_a_html(texto_analista)
         contenedor_analista.markdown(
             f"""
@@ -694,7 +647,6 @@ Calculando ratios clave...</p>
 
     time.sleep(0.3)
 
-    # PASO 3: Orquestador sintetiza y llama a CrewAI
     contenedor_orquestador.markdown(
         f"""
 <div style="{ESTILO_CAJA}">
@@ -754,7 +706,6 @@ Calculando ratios clave...</p>
 
     time.sleep(0.3)
 
-    # PASO 4: Generar PDF
     contenedor_orquestador.markdown(
         f"""
 <div style="{ESTILO_CAJA}">
@@ -800,7 +751,6 @@ Calculando ratios clave...</p>
         unsafe_allow_html=True,
     )
 
-    # Mostrar PDF o fallback HTML
     if pdf_bytes is not None:
         contenedor_pdf.markdown(
             f"""
